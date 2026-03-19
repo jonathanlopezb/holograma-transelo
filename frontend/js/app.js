@@ -23,26 +23,33 @@ let appState = {
 
 // 1. INITIALIZATION & AVATAR SYNC
 async function init() {
-    // SYNC AVATAR: ¿Quién es la cumpleañera de hoy?
+    console.log("🚀 TRANSELO OS: SISTEMA INICIADO...");
+    transcriptBox.textContent = "📡 CONECTANDO CON LA NUBE DE TRANSELO...";
+    
     try {
-        const resAvatar = await fetch(`${API_BASE}/event/current-avatar`);
-        const avatarData = await resAvatar.json();
+        // SYNC AVATAR: ¿Quién es la cumpleañera de hoy?
+        const resAvatar = await fetch(`${API_BASE}/event/current-avatar`).catch(e => { console.warn("API Offline, usando avatar local"); return null; });
         
-        if (avatarData.video_url.endsWith('.jpg')) {
-            // Si es imagen, la mostramos estática o con un filtro glitch
-            avatarVideo.poster = avatarData.video_url;
-            avatarVideo.src = "";
-        } else {
-            avatarVideo.src = avatarData.video_url;
+        if (resAvatar && resAvatar.ok) {
+            const avatarData = await resAvatar.json();
+            if (avatarData.video_url.endsWith('.jpg')) {
+                avatarVideo.poster = avatarData.video_url;
+                avatarVideo.src = "";
+            } else {
+                avatarVideo.src = avatarData.video_url;
+            }
         }
         
     } catch (e) {
         console.error("No se pudo cargar el avatar IA:", e);
+        transcriptBox.textContent = "⚠️ ERROR DE RED: MODO DESCONECTADO";
     }
 
     // Reveal UI
     gsap.to(".guest-card", { opacity: 1, x: 0, duration: 1, delay: 0.5 });
     gsap.to(".transcript-container", { opacity: 1, y: 0, duration: 1, delay: 0.8 });
+    
+    transcriptBox.textContent = "✓ SISTEMA LISTO. ESCANEA TU QR...";
     
     // Camera & Scanner
     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
