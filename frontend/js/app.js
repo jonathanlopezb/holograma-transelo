@@ -1,7 +1,5 @@
-// 🌌 TRANSELO EVENTOS ENGINE 2.0 - CORE & SCANNER
-// Libraries: GSAP, Canvas API, Web Media API, Html5Qrcode
-
-const API_ENDPOINT = '/api/chat'; 
+// 🌌 TRANSELO ENGINE 2.0 - ARCHITECTURE REAL & AI PERSONALIZATION
+const API_BASE = '/api';
 const micBtn = document.getElementById('mic-btn');
 const selfieBtn = document.getElementById('selfie-btn');
 const transcriptBox = document.getElementById('transcript-box');
@@ -10,7 +8,6 @@ const vCtx = vCanvas.getContext('2d');
 const avatarVideo = document.getElementById('avatar-video');
 const userCamera = document.getElementById('user-camera');
 
-// State
 let appState = {
     isRecording: false,
     audioCtx: null,
@@ -24,24 +21,30 @@ let appState = {
     isWelcomeTriggered: false
 };
 
-// 1. INITIALIZATION
-function init() {
-    const params = new URLSearchParams(window.location.search);
-    appState.context = {
-        nombre: params.get('nombre') || 'Invitado Especial',
-        mesa: params.get('mesa') || 'N/A',
-        evento: params.get('evento') || 'default'
-    };
+// 1. INITIALIZATION & AVATAR SYNC
+async function init() {
+    // SYNC AVATAR: ¿Quién es la cumpleañera de hoy?
+    try {
+        const resAvatar = await fetch(`${API_BASE}/event/current-avatar`);
+        const avatarData = await resAvatar.json();
+        
+        if (avatarData.video_url.endsWith('.jpg')) {
+            // Si es imagen, la mostramos estática o con un filtro glitch
+            avatarVideo.poster = avatarData.video_url;
+            avatarVideo.src = "";
+        } else {
+            avatarVideo.src = avatarData.video_url;
+        }
+        
+    } catch (e) {
+        console.error("No se pudo cargar el avatar IA:", e);
+    }
 
-    updateUI();
-    
     // Reveal UI
     gsap.to(".guest-card", { opacity: 1, x: 0, duration: 1, delay: 0.5 });
     gsap.to(".transcript-container", { opacity: 1, y: 0, duration: 1, delay: 0.8 });
     
-    if (window.particlesJS) initParticles(appState.context.evento);
-
-    // Startup Webcam & Scanner
+    // Camera & Scanner
     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(stream => { 
             userCamera.srcObject = stream;
@@ -54,25 +57,22 @@ function updateUI() {
     document.getElementById('guest-name').textContent = appState.context.nombre.toUpperCase();
     document.getElementById('guest-table').textContent = appState.context.mesa;
     document.getElementById('event-type').textContent = appState.context.evento.toUpperCase();
-    document.getElementById('session-id').textContent = Math.random().toString(36).substr(2, 6).toUpperCase();
     document.body.className = `theme-${appState.context.evento}`;
+    if (window.particlesJS) initParticles(appState.context.evento);
 }
 
-// 2. AUTOMATIC QR SCANNER (EYE OF THE TOTEM)
+// 2. ESCÁNER QR CON VALIDACIÓN REAL
 function startQRScanner() {
     if (appState.isScannerActive) return;
-    
-    // Load script dynamically for performance
     const script = document.createElement('script');
     script.src = "https://unpkg.com/html5-qrcode";
     script.onload = () => {
-        const html5QrCode = new Html5Qrcode("app-viewport"); // Scanner over the main viewport
-        const config = { fps: 15, qrbox: { width: 300, height: 300 } };
-        
-        html5QrCode.start({ facingMode: "user" }, config, (decoded) => {
-            if (!appState.isWelcomeTriggered && decoded.includes("evento=")) {
+        const html5QrCode = new Html5Qrcode("app-viewport");
+        const config = { fps: 20, qrbox: { width: 300, height: 300 } };
+        html5QrCode.start({ facingMode: "user" }, config, async (qrId) => {
+            if (!appState.isWelcomeTriggered && qrId.length < 15) { 
                 appState.isWelcomeTriggered = true;
-                handleQRWelcome(decoded);
+                await validateAndWelcome(qrId);
             }
         });
         appState.isScannerActive = true;
@@ -80,55 +80,48 @@ function startQRScanner() {
     document.head.appendChild(script);
 }
 
-async function handleQRWelcome(url) {
-    const params = new URL(url).searchParams;
-    appState.context = {
-        nombre: params.get('nombre'),
-        mesa: params.get('mesa'),
-        evento: params.get('evento')
-    };
-    
-    updateUI(); // Immediate change to specific theme
-    
-    // Special trigger: "Introduce yourself to the guest"
-    const formData = new FormData();
-    const prompt = `¡Bienvenido ${appState.context.nombre}! Qué alegría que estés en mis 15. Tu mesa es la ${appState.context.mesa}. Pasa y diviértete.`;
-    
-    formData.append('text_trigger', prompt);
-    formData.append('context', JSON.stringify(appState.context));
-
+async function validateAndWelcome(qrId) {
     try {
-        transcriptBox.textContent = `📡 ESCANEANDO IDENTIDAD... BIENVENIDO ${appState.context.nombre.toUpperCase()}`;
-        const res = await fetch(API_ENDPOINT, { method: 'POST', body: formData });
-        const data = await res.json();
+        transcriptBox.textContent = `📡 IDENTIFICANDO INVITADO...`;
+        const resGuest = await fetch(`${API_BASE}/guest/${qrId}`);
+        if (!resGuest.ok) throw new Error();
+        const guest = await resGuest.json();
         
-        if (data.type === 'success') {
-            typeWriter(data.response);
-            playAudio(data.audio);
-            // Reset for next guest in 15 seconds
+        appState.context = { nombre: guest.name, mesa: guest.table, evento: guest.event_type, host_name: guest.event_host };
+        updateUI();
+
+        // TRIGGER AI
+        const formData = new FormData();
+        const prompt = `Soy yo, ${appState.context.host_name}. ¡Bienvenido ${appState.context.name}! Qué alegría verte aquí. Tu mesa es la ${appState.context.table}.`;
+        formData.append('text_trigger', prompt);
+        formData.append('context', JSON.stringify(appState.context));
+
+        const resChat = await fetch(`${API_BASE}/chat`, { method: 'POST', body: formData });
+        const chat = await resChat.json();
+        if (chat.type === 'success') {
+            typeWriter(chat.response);
+            playAudio(chat.audio);
             setTimeout(() => { appState.isWelcomeTriggered = false; }, 15000);
         }
-    } catch(e) { console.error("Welcome trigger failed:", e); }
+    } catch(e) { 
+        transcriptBox.textContent = "❌ ERROR: ACCESO DENEGADO";
+        setTimeout(() => { appState.isWelcomeTriggered = false; }, 4000);
+    }
 }
 
-// 3. VOICE ENGINE
+// 3. AUDIO ENGINE
 async function toggleMic() {
     if (!appState.isRecording) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             appState.mediaRecorder = new MediaRecorder(stream);
             appState.audioChunks = [];
-            
-            if(!appState.audioCtx) {
-                appState.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-            }
-            const micSource = appState.audioCtx.createMediaStreamSource(stream);
-            setupVisualizer(micSource);
-
+            if(!appState.audioCtx) appState.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+            const source = appState.audioCtx.createMediaStreamSource(stream);
+            setupVisualizer(source);
             appState.mediaRecorder.ondataavailable = e => appState.audioChunks.push(e.data);
             appState.mediaRecorder.onstop = processVoice;
             appState.mediaRecorder.start();
-            
             appState.isRecording = true;
             micBtn.classList.add('active');
             transcriptBox.textContent = "📡 ESCUCHANDO...";
@@ -146,23 +139,15 @@ async function processVoice() {
     const formData = new FormData();
     formData.append('audio', audioBlob);
     formData.append('context', JSON.stringify(appState.context));
-
     try {
-        const res = await fetch(API_ENDPOINT, { method: 'POST', body: formData });
+        const res = await fetch(`${API_BASE}/chat`, { method: 'POST', body: formData });
         const data = await res.json();
-        if (data.type === 'success') {
-            typeWriter(data.response);
-            playAudio(data.audio);
-        }
+        if (data.type === 'success') { typeWriter(data.response); playAudio(data.audio); }
     } catch (e) { transcriptBox.textContent = "❌ ERROR"; }
 }
 
-// Audio visualizer and setup same as before but integrated
 function setupVisualizer(sourceNode) {
-    if (!appState.analyser) {
-        appState.analyser = appState.audioCtx.createAnalyser();
-        appState.analyser.fftSize = 64;
-    }
+    if (!appState.analyser) { appState.analyser = appState.audioCtx.createAnalyser(); appState.analyser.fftSize = 64; }
     sourceNode.connect(appState.analyser);
     if (!(sourceNode instanceof MediaStreamAudioSourceNode)) appState.analyser.connect(appState.audioCtx.destination);
     renderVisualizer();
@@ -173,7 +158,6 @@ function renderVisualizer() {
     requestAnimationFrame(renderVisualizer);
     appState.dataArray = new Uint8Array(appState.analyser.frequencyBinCount);
     appState.analyser.getByteFrequencyData(appState.dataArray);
-    
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
     const barWidth = (vCanvas.width / appState.dataArray.length) * 2;
     let x = 0;
@@ -205,14 +189,12 @@ function typeWriter(text) {
     }, 25);
 }
 
-// 4. SELFIE
 function takeSelfie() {
     const flash = document.getElementById('camera-flash');
     const composer = document.getElementById('selfie-composer');
     const ctx = composer.getContext('2d');
     gsap.to(flash, { opacity: 1, duration: 0.1, yoyo: true, repeat: 1 });
     document.body.classList.add('camera-active');
-    
     setTimeout(() => {
         composer.width = 1080; composer.height = 1350;
         ctx.drawImage(userCamera, 0, 0, 1080, 1350);
@@ -221,16 +203,15 @@ function takeSelfie() {
         ctx.globalAlpha = 1;
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--primary');
         ctx.font = "bold 50px Orbitron";
-        ctx.fillText("TRANSELO | MIS 15 AÑOS", 50, 1300);
+        ctx.fillText("TRANSELO | " + (appState.context.host_name || "MIS 15 AÑOS"), 50, 1300);
         const link = document.createElement('a');
-        link.download = `HologramSelfie.png`;
+        link.download = `Selfie_Hologram.png`;
         link.href = composer.toDataURL();
         link.click();
         document.body.classList.remove('camera-active');
     }, 500);
 }
 
-// Utils
 function b64toBlob(b, c) {
     const s = atob(b); const arrays = [];
     for (let o = 0; o < s.length; o += 512) {
@@ -244,7 +225,7 @@ function b64toBlob(b, c) {
 
 function initParticles(t) {
     let color = "#00f2ff";
-    if (t === 'quince') color = "#ff00ff"; // Rosa/Purpurina para quinces
+    if (t === 'quince') color = "#ff00ff";
     if (t === 'boda') color = "#ffd700";
     particlesJS("particles-js", {
         "particles": { "number": { "value": 100 }, "color": { "value": color }, "line_linked": { "enable": true, "color": color } }

@@ -2,106 +2,130 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADMIN | TRANSELO EVENTOS - Invitaciones QR</title>
+    <title>CONFIGURACIÓN | TRANSELO EVENTOS</title>
     <link rel="stylesheet" href="../frontend/css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { background: #050505; color: #fff; padding: 40px; overflow-y: auto; }
-        .admin-container { max-width: 900px; margin: 0 auto; }
-        .guest-form { display: grid; grid-template-columns: 1fr 1fr 100px; gap: 15px; margin-bottom: 40px; padding: 25px; border: 1px solid var(--primary); background: rgba(0,242,255,0.05); }
-        input { background: #111; border: 1px solid var(--primary); color: #fff; padding: 12px; font-family: 'Share Tech Mono'; }
-        .guest-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .guest-card-admin { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; text-align: center; position: relative; }
-        .qr-canvas { background: #fff; padding: 10px; margin: 15px auto; width: 150px; height: 150px; }
-        .btn-gen { background: var(--primary); color: #000; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-gen:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--primary); }
-        .download-btn { display: inline-block; margin-top: 10px; color: var(--primary); text-decoration: none; font-size: 0.8rem; border: 1px solid var(--primary); padding: 5px 10px; }
-        h1 { font-family: 'Orbitron'; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+        body { background: #000; color: #fff; padding: 30px; font-family: 'Share Tech Mono'; }
+        .section { background: rgba(0,242,255,0.05); border: 1px solid var(--primary); padding: 25px; margin-bottom: 30px; border-radius: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        input, select { background: #111; border: 1px solid #444; color: #fff; padding: 12px; width: 100%; margin: 5px 0; }
+        .btn { background: var(--primary); color: #000; border: none; padding: 12px 25px; font-weight: bold; cursor: pointer; display: block; width: 100%; transition: 0.3s; }
+        .btn:hover { background: #fff; box-shadow: 0 0 20px var(--primary); }
+        .avatar-preview { width: 100%; height: 200px; border: 2px dashed var(--primary); display: flex; align-items: center; justify-content: center; margin-top: 10px; overflow: hidden; }
+        .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+        h1, h2 { font-family: 'Orbitron'; color: var(--primary); text-transform: uppercase; }
+        .status-pill { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; background: #39ff14; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="admin-container">
-        <header>
-            <h1>TRANSELO ADMIN | 15 AÑOS</h1>
-            <p>Generador de Invitaciones Holográficas con QR</p>
-        </header>
+    <h1>TRANSELO ADMIN | AVATAR FACTORY 🤖</h1>
 
-        <section class="guest-form">
-            <input type="text" id="guest-name-input" placeholder="Nombre completo del invitado">
-            <input type="text" id="guest-table-input" placeholder="Mesa (ej: 5 o VIP)">
-            <button class="btn-gen" onclick="addGuest()">AÑADIR</button>
-        </section>
+    <div class="grid">
+        <!-- 1. IDENTIDAD DE LA QUINCEAÑERA -->
+        <div class="section">
+            <h2>1. LA QUINCEAÑERA (IA)</h2>
+            <p>Sube la cara y voz para generar el holograma.</p>
+            <label>Selfie (Cara de frente):</label>
+            <input type="file" id="selfie-file" accept="image/*" onchange="previewImage(event)">
+            <label>Muestra de Voz (Opcional):</label>
+            <input type="file" id="voice-file" accept="audio/*">
+            
+            <div class="avatar-preview" id="preview-box">
+                <span>VISTA PREVIA DE IDENTIDAD</span>
+            </div>
+            <button class="btn" style="margin-top:20px" onclick="uploadAvatar()">GENERAR HOLOGRAMA IA</button>
+            <div id="upload-status" style="margin-top:10px"></div>
+        </div>
 
-        <div class="guest-list" id="guest-list-container">
-            <!-- Invitados aquí -->
+        <!-- 2. CONFIGURACIÓN DEL EVENTO -->
+        <div class="section">
+            <h2>2. CONFIGURAR EVENTO</h2>
+            <input type="text" id="host-name" placeholder="Nombre: Mis 15 Años de Lucía">
+            <select id="event-type">
+                <option value="quince">Mis 15 Años</option>
+                <option value="boda">Boda Real</option>
+            </select>
+            <button class="btn" onclick="setupEvent()">ACTIVAR EVENTO</button>
+        </div>
+    </div>
+
+    <!-- 3. INVITADOS -->
+    <div class="section">
+        <h2>3. GESTIÓN DE INVITADOS</h2>
+        <div class="grid">
+            <input type="text" id="guest-name" placeholder="Nombre Invitado">
+            <input type="text" id="guest-table" placeholder="Mesa">
+        </div>
+        <button class="btn" style="margin-top:10px" onclick="addGuest()">REGISTRAR Y GENERAR QR</button>
+        
+        <div id="guest-list-container" style="margin-top:30px">
+            <!-- Tabla de invitados -->
         </div>
     </div>
 
     <script>
-        let guests = JSON.parse(localStorage.getItem('transelo_guests') || '[]');
+        const API = "/api";
 
-        function addGuest() {
-            const name = document.getElementById('guest-name-input').value;
-            const table = document.getElementById('guest-table-input').value;
-            if(!name || !table) return alert("Completa los datos");
-
-            const guest = {
-                id: Date.now(),
-                nombre: name,
-                mesa: table,
-                evento: 'quince' // Fijo para este módulo
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const preview = document.getElementById('preview-box');
+                preview.innerHTML = `<img src="${reader.result}">`;
             };
-
-            guests.push(guest);
-            save();
-            render();
-            document.getElementById('guest-name-input').value = '';
+            reader.readAsDataURL(event.target.files[0]);
         }
 
-        function save() {
-            localStorage.setItem('transelo_guests', JSON.stringify(guests));
+        async function uploadAvatar() {
+            const selfie = document.getElementById('selfie-file').files[0];
+            const voice = document.getElementById('voice-file').files[0];
+            if(!selfie) return alert("Sube tu selfie primero");
+
+            const formData = new FormData();
+            formData.append('selfie', selfie);
+            if(voice) formData.append('voice_sample', voice);
+
+            document.getElementById('upload-status').innerHTML = "⏳ IA EDITANDO VIDEO Y CLONANDO VOZ...";
+            
+            const res = await fetch(`${API}/admin/upload-avatar`, { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if(res.ok) {
+                document.getElementById('upload-status').innerHTML = `<span class="status-pill">✓ HOLOGRAMA LISTO</span>`;
+                alert("¡Arquitectura IA lista! El video se ha fusionado.");
+            }
         }
 
-        function render() {
+        async function setupEvent() {
+            const host = document.getElementById('host-name').value;
+            const type = document.getElementById('event-type').value;
+            const res = await fetch(`${API}/admin/setup-event?host_name=${host}&event_type=${type}`, { method: 'POST' });
+            if(res.ok) alert("Evento Actualizado");
+        }
+
+        async function addGuest() {
+            const name = document.getElementById('guest-name').value;
+            const table = document.getElementById('guest-table').value;
+            await fetch(`${API}/admin/guests?name=${name}&table=${table}`, { method: 'POST' });
+            loadGuests();
+        }
+
+        async function loadGuests() {
+            const res = await fetch(`${API}/admin/guests`);
+            const guests = await res.json();
             const container = document.getElementById('guest-list-container');
-            container.innerHTML = '';
+            container.innerHTML = guests.map(g => `
+                <div style="border: 1px solid #333; padding:10px; margin:5px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><b>${g.name}</b> - Mesa ${g.table_number}</span>
+                    <div id="qr-${g.id}" style="background:#fff; padding:5px;"></div>
+                </div>
+            `).join('');
             
             guests.forEach(g => {
-                const card = document.createElement('div');
-                card.className = 'guest-card-admin';
-                // Generar URL para el código QR (Asegúrate de cambiar 'localhost' por tu URL de Vercel cuando despliegues)
-                const baseUrl = window.location.origin + "/frontend/index.html";
-                const qrUrl = `${baseUrl}?nombre=${encodeURIComponent(g.nombre)}&mesa=${encodeURIComponent(g.mesa)}&evento=${g.evento}`;
-                
-                card.innerHTML = `
-                    <div style="font-weight:bold; color:var(--primary)">${g.nombre.toUpperCase()}</div>
-                    <div style="font-size:0.8rem; opacity:0.7">MESA: ${g.mesa}</div>
-                    <div id="qr-${g.id}" class="qr-canvas"></div>
-                    <button class="download-btn" onclick="deleteGuest(${g.id})">ELIMINAR</button>
-                `;
-                container.appendChild(card);
-
-                // Generar el QR visualmente
-                new QRCode(document.getElementById(`qr-${g.id}`), {
-                    text: qrUrl,
-                    width: 150,
-                    height: 150,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
+                new QRCode(document.getElementById(`qr-${g.id}`), { text: g.id, width: 60, height: 60 });
             });
         }
-
-        function deleteGuest(id) {
-            guests = guests.filter(g => g.id !== id);
-            save();
-            render();
-        }
-
-        render();
+        loadGuests();
     </script>
 </body>
 </html>
