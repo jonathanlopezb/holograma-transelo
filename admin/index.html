@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADMIN | TRANSELO EVENTOS - Invitaciones QR</title>
+    <link rel="stylesheet" href="../frontend/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { background: #050505; color: #fff; padding: 40px; overflow-y: auto; }
+        .admin-container { max-width: 900px; margin: 0 auto; }
+        .guest-form { display: grid; grid-template-columns: 1fr 1fr 100px; gap: 15px; margin-bottom: 40px; padding: 25px; border: 1px solid var(--primary); background: rgba(0,242,255,0.05); }
+        input { background: #111; border: 1px solid var(--primary); color: #fff; padding: 12px; font-family: 'Share Tech Mono'; }
+        .guest-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .guest-card-admin { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; text-align: center; position: relative; }
+        .qr-canvas { background: #fff; padding: 10px; margin: 15px auto; width: 150px; height: 150px; }
+        .btn-gen { background: var(--primary); color: #000; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-gen:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--primary); }
+        .download-btn { display: inline-block; margin-top: 10px; color: var(--primary); text-decoration: none; font-size: 0.8rem; border: 1px solid var(--primary); padding: 5px 10px; }
+        h1 { font-family: 'Orbitron'; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header>
+            <h1>TRANSELO ADMIN | 15 AÑOS</h1>
+            <p>Generador de Invitaciones Holográficas con QR</p>
+        </header>
+
+        <section class="guest-form">
+            <input type="text" id="guest-name-input" placeholder="Nombre completo del invitado">
+            <input type="text" id="guest-table-input" placeholder="Mesa (ej: 5 o VIP)">
+            <button class="btn-gen" onclick="addGuest()">AÑADIR</button>
+        </section>
+
+        <div class="guest-list" id="guest-list-container">
+            <!-- Invitados aquí -->
+        </div>
+    </div>
+
+    <script>
+        let guests = JSON.parse(localStorage.getItem('transelo_guests') || '[]');
+
+        function addGuest() {
+            const name = document.getElementById('guest-name-input').value;
+            const table = document.getElementById('guest-table-input').value;
+            if(!name || !table) return alert("Completa los datos");
+
+            const guest = {
+                id: Date.now(),
+                nombre: name,
+                mesa: table,
+                evento: 'quince' // Fijo para este módulo
+            };
+
+            guests.push(guest);
+            save();
+            render();
+            document.getElementById('guest-name-input').value = '';
+        }
+
+        function save() {
+            localStorage.setItem('transelo_guests', JSON.stringify(guests));
+        }
+
+        function render() {
+            const container = document.getElementById('guest-list-container');
+            container.innerHTML = '';
+            
+            guests.forEach(g => {
+                const card = document.createElement('div');
+                card.className = 'guest-card-admin';
+                // Generar URL para el código QR (Asegúrate de cambiar 'localhost' por tu URL de Vercel cuando despliegues)
+                const baseUrl = window.location.origin + "/frontend/index.html";
+                const qrUrl = `${baseUrl}?nombre=${encodeURIComponent(g.nombre)}&mesa=${encodeURIComponent(g.mesa)}&evento=${g.evento}`;
+                
+                card.innerHTML = `
+                    <div style="font-weight:bold; color:var(--primary)">${g.nombre.toUpperCase()}</div>
+                    <div style="font-size:0.8rem; opacity:0.7">MESA: ${g.mesa}</div>
+                    <div id="qr-${g.id}" class="qr-canvas"></div>
+                    <button class="download-btn" onclick="deleteGuest(${g.id})">ELIMINAR</button>
+                `;
+                container.appendChild(card);
+
+                // Generar el QR visualmente
+                new QRCode(document.getElementById(`qr-${g.id}`), {
+                    text: qrUrl,
+                    width: 150,
+                    height: 150,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            });
+        }
+
+        function deleteGuest(id) {
+            guests = guests.filter(g => g.id !== id);
+            save();
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>
