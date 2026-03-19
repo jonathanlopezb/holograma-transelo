@@ -3,61 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proto Hologram Experience 🌟</title>
+    <title>TRANSELO EVENTOS - Holograma Pro</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Scifi y Elegantes -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Playfair+Display:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- GSAP para animaciones de cine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 <body class="theme-default">
-    <div class="hologram-container" id="capture-zone">
-        <!-- Live Camera Feed for Selfies (Background) -->
-        <video id="webcam-feed" autoplay playsinline class="webcam-overlay"></video>
-        
-        <!-- Main Avatar Video (Should be a video of the person with black/transparent background) -->
-        <video id="avatar-video" autoplay loop muted playsinline>
-            <!-- Source as default silhuette if none provided -->
-            <source src="" type="video/mp4">
-        </video>
-        
-        <div id="avatar-placeholder" class="silhouette-glow"></div>
+    <div id="particles-js"></div>
+    
+    <div class="hologram-main-container" id="app-viewport">
+        <!-- Fondo de cámara (para selfies) -->
+        <video id="user-camera" autoplay playsinline muted></video>
 
-        <!-- Overlays -->
-        <div class="scanlines"></div>
-        <div class="flicker-overlay"></div>
-        <div class="vignette"></div>
-
-        <!-- Real-time HUD -->
-        <div class="hud container-bounds">
-            <div class="hud-top-left">
-                PROTO_CORE: 2.1.0<br>
-                EVENT: <span id="event-label">SYSTEM_DEFAULT</span><br>
-                GUEST: <span id="user-label" class="status-online">IDENTIFYING...</span>
-            </div>
-            
-            <div class="hud-top-right">
-                STATUS: <span id="rec-status" class="status-idle">VIRTUAL_IDLE</span><br>
-                BAT: 98% | LAT: 12ms
-            </div>
-            
-            <div id="transcript-container" class="hud-bottom-left">
-                <div class="audio-wave">
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                </div>
-                <div id="transcript-box">BIENVENIDO AL PROTO HOLOGRAPHIC MATRIX</div>
-            </div>
-            
-            <div class="hud-bottom-right">
-                <button id="mic-btn" class="hud-btn glow-btn">🎙️ SOSTÉN PARA HABLAR</button>
-                <button id="selfie-btn" class="hud-btn selfie-btn">📸 SELFIE</button>
-            </div>
+        <!-- El Holograma (Video del Avatar) -->
+        <div class="hologram-projection">
+            <video id="avatar-video" autoplay loop muted playsinline></video>
+            <div id="hologram-glow" class="glow-base"></div>
         </div>
-        
-        <!-- Canvas Hidden for composing the selfie -->
-        <canvas id="screenshot-canvas" style="display:none;"></canvas>
+
+        <!-- Capa de Escaneo / CRT -->
+        <div class="fx-overlay">
+            <div class="scanlines"></div>
+            <div class="flicker"></div>
+        </div>
+
+        <!-- HUD: PANEL PROFESIONAL -->
+        <div class="hud-overlay container-bounds">
+            <!-- Header: Identificación del Evento -->
+            <header class="hud-header">
+                <div class="brand">
+                    <span class="glitch" data-text="TRANSELO">TRANSELO</span>
+                    <span class="sub-brand">EVENTOS DIGITALES</span>
+                </div>
+                <div class="event-info">
+                    ID_SESION: <span id="session-id">----</span><br>
+                    TIPO: <span id="event-type">ESPERANDO QR</span>
+                </div>
+            </header>
+
+            <!-- Izquierda: Datos del Invitado (Personalizado) -->
+            <section class="guest-card glass-panel" id="guest-card">
+                <div class="card-header">IDENTIFICACIÓN_INVITADO</div>
+                <div class="card-body">
+                    <div class="data-row">
+                        <span class="label">NOMBRE:</span>
+                        <span id="guest-name" class="value">---</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="label">UBICACIÓN:</span>
+                        <span id="guest-table" class="value">---</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Centro inferior: Transcripción -->
+            <footer class="hud-footer">
+                <div class="transcript-container glass-panel">
+                    <div class="audio-feedback">
+                        <canvas id="visualizer-canvas"></canvas>
+                    </div>
+                    <div id="transcript-box" class="type-effect">BIENVENIDO AL SISTEMA HOLOGRAMA DE TRANSELO...</div>
+                </div>
+            </section>
+
+            <!-- Derecha: Controles Pro -->
+            <section class="hud-sidebar">
+                <button id="mic-btn" class="ctrl-btn pulse-btn">
+                    <div class="btn-icon">🎙️</div>
+                    <div class="btn-text">HABLAR</div>
+                </button>
+                <button id="selfie-btn" class="ctrl-btn selfie-btn">
+                    <div class="btn-icon">📸</div>
+                    <div class="btn-text">SELFIE</div>
+                </button>
+            </section>
+        </div>
     </div>
 
-    <!-- Flash effect for selfies -->
-    <div id="flash-overlay"></div>
+    <!-- Flash y Canvas oculto para Selfie -->
+    <div id="camera-flash"></div>
+    <canvas id="selfie-composer" style="display:none;"></canvas>
 
+    <!-- Librerías de apoyo -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
