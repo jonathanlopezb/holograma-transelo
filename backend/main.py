@@ -4,12 +4,12 @@ import base64
 import tempfile
 import shutil
 import uuid
+import requests
 from typing import Optional, List
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from fastapi.staticfiles import StaticFiles
 
 # Importar arquitectura de datos y AI
 try:
@@ -23,11 +23,6 @@ except ImportError:
 
 app = FastAPI()
 
-# Directorio para Avatares Generados
-AVATAR_DIR = "static/avatars"
-os.makedirs(AVATAR_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Inicializar DB
 init_db()
 
@@ -39,7 +34,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- AVATAR FACTORY (LA MAGIA DE LA 15ÑERA) ---
+# 🌐 LÓGICA DE VERCEL BLOB (SUBIR ARCHIVOS A LA NUBE)
+BLOB_TOKEN = os.getenv("BLOB_READ_WRITE_TOKEN")
+
+async def upload_to_vercel_blob(file_content, filename):
+    """Sube un archivo a Vercel Blob usando su API de red"""
+    if not BLOB_TOKEN:
+        # Fallback local si no hay token
+        os.makedirs("static/avatars", exist_ok=True)
+        local_path = f"static/avatars/{filename}"
+        with open(local_path, "wb") as f:
+            f.write(file_content)
+        return f"/static/avatars/{filename}"
+
+    # API de Vercel Blob (PUT)
+    url = f"https://blob.vercel-storage.com/{filename}"
+    headers = {
+        "Authorization": f"Bearer {BLOB_TOKEN}",
+        "x-api-version": "2023-01-01"
+    }
+    response = requests.put(url, data=file_content, headers=headers)
+    if response.status_code == 200:
+        return response.json().get("url")
+    else:
+        raise Exception(f"Blob upload failed: {response.text}")
+
+# --- AVATAR FACTORY (CON VERCEL BLOB) ---
 
 @app.post("/api/admin/upload-avatar")
 async def upload_avatar(
@@ -47,28 +67,20 @@ async def upload_avatar(
     voice_sample: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Recibe la Selfie y Voz de la Quinceañera.
-    En producción: Aquí se llama a HeyGen/Replicate para generar el video.
-    Para la DEMO: Guardamos los archivos y preparamos el sistema.
-    """
     event = db.query(Event).filter(Event.active == True).first()
-    if not event:
-        raise HTTPException(status_code=400, detail="Configura el evento primero")
+    if not event: raise HTTPException(status_code=400, detail="Configura el evento")
 
-    # Guardar Selfie
-    selfie_path = os.path.join(AVATAR_DIR, f"selfie_{event.id}.jpg")
-    with open(selfie_path, "wb") as buffer:
-        shutil.copyfileobj(selfie.file, buffer)
-
-    # Simulación de Procesamiento IA
-    # En un caso real, aquí iría el código de sincronización labial.
-    # Por ahora, usamos el video de la selfie como marcador de posición.
+    # 1. Subir Selfie a Vercel Blob
+    selfie_content = await selfie.read()
+    filename = f"avatar_{event.id}_{uuid.uuid4().hex[:6]}.jpg"
+    cloud_url = await upload_to_vercel_blob(selfie_content, filename)
     
+    # 2. Guardar URL en el host del evento (opcionalmente podrías tener un campo avatar_url en Event)
+    # Por ahora la devolvemos para que el panel admin la confirme
     return {
-        "status": "processing",
-        "message": "IA está editando el video con tu cara y voz...",
-        "preview_url": f"/static/avatars/selfie_{event.id}.jpg"
+        "status": "success",
+        "message": "Avatar guardado en la nube (Vercel Blob)",
+        "url": cloud_url
     }
 
 @app.get("/api/event/current-avatar")
@@ -76,10 +88,11 @@ async def get_current_avatar(db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.active == True).first()
     if not event: return {"video_url": "assets/default_avatar.mp4"}
     
-    avatar_file = f"selfie_{event.id}.jpg" # O .mp4 si ya se generó
-    return {"video_url": f"/static/avatars/{avatar_file}", "host_name": event.host_name}
+    # Aquí podríamos buscar en la base de datos la URL guardada del avatar
+    # Por ahora, devolvemos un placeholder o la configuración activa
+    return {"video_url": "/static/avatars/default.mp4", "host_name": event.host_name}
 
-# --- ENDPOINTS ADMINISTRATIVOS ---
+# --- ADMIN API (PARA NEON POSTGRES) ---
 
 @app.post("/api/admin/setup-event")
 async def setup_event(host_name: str, event_type: str, db: Session = Depends(get_db)):
@@ -88,6 +101,10 @@ async def setup_event(host_name: str, event_type: str, db: Session = Depends(get
     db.add(new_event)
     db.commit()
     return {"status": "success", "event_id": new_event.id}
+
+@app.get("/api/admin/guests")
+async def list_guests(db: Session = Depends(get_db)):
+    return db.query(Guest).all()
 
 @app.post("/api/admin/guests")
 async def add_guest(name: str, table: str, special_msg: Optional[str] = None, db: Session = Depends(get_db)):
@@ -105,7 +122,7 @@ async def get_guest_info(qr_id: str, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == guest.event_id).first()
     return {"name": guest.name, "table": guest.table_number, "special_msg": guest.special_message, "event_host": event.host_name, "event_type": event.event_type}
 
-# --- CHAT ENGINE ---
+# --- CHAT ENGINE VERCEL ---
 
 @app.post("/api/chat")
 async def chat_api(
@@ -123,10 +140,9 @@ async def chat_api(
                 temp_path = temp_file.name
             user_input = transcribe_audio(temp_path)
             os.remove(temp_path)
-
+        
         ai_response = get_llm_response(user_input, session_id, parsed_context)
         tts_audio_path = await generate_speech(ai_response)
-
         with open(tts_audio_path, "rb") as f:
             audio_data = base64.b64encode(f.read()).decode('utf-8')
         os.remove(tts_audio_path)
