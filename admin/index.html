@@ -62,15 +62,26 @@
                         </div>
                     </div>
 
-                    <!-- Widget 3: Avatar Preview -->
-                    <div class="glass-card" style="text-align:center;">
-                        <div class="card-title">Previsualización Holograma</div>
-                        <div id="avatar-circle" style="width:100px; height:100px; border:2px solid var(--primary); border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center;">
-                            👤
-                        </div>
-                        <p style="font-size:0.8rem; margin-top:10px;">IA: LISTA PARA RENDER</p>
-                    </div>
+            <!-- Widget 3: Demo Express -->
+            <div class="glass-card" style="text-align:center; border: 1px solid var(--magenta);">
+                <div class="card-title" style="color:var(--magenta)">Modo Demostración VIP</div>
+                <p style="font-size:0.7rem; opacity:0.6;">Carga automáticamente los 15 de Isabella para tu cliente.</p>
+                <button class="btn-pro" style="background:linear-gradient(45deg, #ff00ff, #800080);" onclick="loadIsabellaDemo()">🚀 CARGAR DEMO ISABELLA</button>
+            </div>
+        </div>
+
+        <!-- Generador de Invitaciones de Lujo -->
+        <div id="invitation-generator" class="glass-card" style="margin-top:25px; display:none;">
+            <div class="card-title">Invitación de Gala Generada</div>
+            <div style="display:flex; justify-content:center; gap:20px; align-items:center;">
+                <canvas id="invitation-canvas" width="400" height="600" style="border-radius:15px; box-shadow:0 0 40px rgba(0,0,0,0.8);"></canvas>
+                <div style="text-align:left;">
+                    <h4 id="inv-guest-name">GUEST</h4>
+                    <p>Mesa: <span id="inv-guest-table">0</span></p>
+                    <button class="btn-pro" onclick="downloadInvit()">📥 DESCARGAR TARJETA PARA CLIENTE</button>
                 </div>
+            </div>
+        </div>
 
                 <!-- Sección de Lista Rápida -->
                 <div class="glass-card" style="margin-top:25px;">
@@ -145,6 +156,70 @@
                 body.appendChild(tr);
                 new QRCode(document.getElementById(`qr-${g.id}`), { text: g.id, width: 60, height: 60 });
             });
+        }
+
+        async function loadIsabellaDemo() {
+            document.getElementById('host-name').value = "Mis 15 Años de Isabella";
+            document.getElementById('event-type').value = "quince";
+            await setupEvent();
+            document.getElementById('guest-name').value = "Invitado de Honor";
+            document.getElementById('guest-table').value = "Presidencial";
+            await addGuest();
+            alert("✓ DEMO ISABELLA LISTA. Generando tarjeta VIP...");
+            
+            // Auto seleccionar el primer invitado
+            const res = await fetch(`${API}/admin/guests`);
+            const guests = await res.json();
+            if(guests.length > 0) generateLuxuryCard(guests[0]);
+        }
+
+        function generateLuxuryCard(guest) {
+            document.getElementById('invitation-generator').style.display = 'block';
+            document.getElementById('inv-guest-name').textContent = guest.name;
+            document.getElementById('inv-guest-table').textContent = guest.table_number;
+
+            const canvas = document.getElementById('invitation-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 1. Fondo de Lujo
+            const grad = ctx.createLinearGradient(0, 0, 0, 600);
+            grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#000');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 400, 600);
+
+            // 2. Bordes de Oro
+            ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 10;
+            ctx.strokeRect(20, 20, 360, 560);
+            
+            // 3. Texto
+            ctx.fillStyle = '#ff00ff'; ctx.font = "bold 24px Orbitron"; ctx.textAlign = "center";
+            ctx.fillText("MIS 15 AÑOS", 200, 80);
+            ctx.fillStyle = '#fff'; ctx.font = "bold 40px Playfair Display";
+            ctx.fillText("Isabella", 200, 140);
+
+            ctx.font = "16px Inter"; ctx.fillStyle = "rgba(255,255,255,0.7)";
+            ctx.fillText("INVITACIÓN PERSONALIZADA PARA:", 200, 200);
+            
+            ctx.font = "bold 25px Inter"; ctx.fillStyle = "#fff";
+            ctx.fillText(guest.name.toUpperCase(), 200, 240);
+
+            ctx.font = "18px Inter"; ctx.fillStyle = "#ffd700";
+            ctx.fillText("MESA: " + guest.table_number, 200, 280);
+
+            // 4. QR dinámico (Usa el ID real de la base de datos)
+            const qrWrapper = document.getElementById(`qr-${guest.id}`);
+            const qrImg = qrWrapper.querySelector('img');
+            if(qrImg) {
+                ctx.fillStyle = "#fff"; ctx.fillRect(100, 350, 200, 200);
+                ctx.drawImage(qrImg, 110, 360, 180, 180);
+            }
+        }
+
+        function downloadInvit() {
+            const canvas = document.getElementById('invitation-canvas');
+            const link = document.createElement('a');
+            link.download = 'Tarjeta_VIP_Transelo.png';
+            link.href = canvas.toDataURL();
+            link.click();
         }
 
         // Estética
