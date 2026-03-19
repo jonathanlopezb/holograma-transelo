@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SOCIAL WALL | TRANSELO EVENTOS</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body { background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .wall-container { width: 90vw; height: 90vh; text-align: center; position: relative; }
+        .welcome-card {
+            background: rgba(255, 215, 0, 0.1); border: 2px solid gold; border-radius: 40px;
+            padding: 60px; margin: 20px; backdrop-filter: blur(20px); opacity: 0; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%;
+        }
+        .name-highlight { font-family: 'Playfair Display', serif; font-size: 8rem; color: gold; text-shadow: 0 0 50px gold; margin: 20px 0; }
+        .host-label { font-family: 'Orbitron'; font-size: 2rem; color: #fff; letter-spacing: 10px; opacity: 0.6; }
+        .particles-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+    </style>
+</head>
+<body>
+    <div id="particles-js" class="particles-bg"></div>
+    
+    <div class="wall-container" id="feed-container">
+        <h1 id="idle-msg" style="color:rgba(255,255,255,0.2); font-family:'Orbitron'; font-size:4rem; letter-spacing:20px;">BIENVENIDOS A LA EXPERIENCIA TRANSELO</h1>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+        const API_FEED = "/api/social/feed";
+        let lastId = null;
+
+        async function updateWall() {
+            try {
+                const res = await fetch(API_FEED);
+                const feed = await res.json();
+                if (feed.length > 0) {
+                    const latest = feed[feed.length - 1];
+                    const currentId = latest.name + latest.time;
+                    
+                    if (currentId !== lastId) {
+                        lastId = currentId;
+                        showWelcome(latest);
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function showWelcome(data) {
+            document.getElementById('idle-msg').style.display = 'none';
+            const container = document.getElementById('feed-container');
+            
+            const card = document.createElement('div');
+            card.className = 'welcome-card';
+            card.innerHTML = `
+                <div class="host-label">${data.host.toUpperCase()}</div>
+                <div style="font-size:3rem; margin-top:40px;">BIENVENIDO/A</div>
+                <div class="name-highlight">${data.name.toUpperCase()}</div>
+                <div style="font-size:1.5rem; opacity:0.5; margin-top:20px;">LLEGADA: ${data.time}</div>
+            `;
+            
+            container.appendChild(card);
+            
+            gsap.to(card, { opacity: 1, scale: 1.1, duration: 1, ease: "power4.out" });
+            
+            // Reventar confetti si es posible (Opcional)
+            
+            setTimeout(() => {
+                gsap.to(card, { opacity: 0, scale: 0.8, duration: 1, onComplete: () => {
+                    card.remove(); 
+                    if(document.querySelectorAll('.welcome-card').length === 0) {
+                        document.getElementById('idle-msg').style.display = 'block';
+                    }
+                }});
+            }, 8000);
+        }
+
+        particlesJS("particles-js", { "particles": { "number": { "value": 50 }, "color": { "value": "#ffd700" }, "line_linked": { "enable": true, "color": "#ffd700", "opacity": 0.2 } } });
+        setInterval(updateWall, 3000);
+    </script>
+</body>
+</html>

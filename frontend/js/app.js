@@ -83,11 +83,14 @@ function startQRScanner() {
 async function validateAndWelcome(qrId) {
     try {
         transcriptBox.textContent = `📡 IDENTIFICANDO INVITADO...`;
-        const resGuest = await fetch(`${API_BASE}/guest/${qrId}`);
-        if (!resGuest.ok) throw new Error();
-        const guest = await resGuest.json();
         
-        appState.context = { nombre: guest.name, mesa: guest.table, evento: guest.event_type, host_name: guest.event_host };
+        // El Backend ya envía la notificación al Social Wall automáticamente al consultar este endpoint
+        const resGuest = await fetch(`${API_BASE}/guest/${qrId}`);
+        if (!resGuest.ok) throw new Error("Invitado no válido");
+        
+        const guestDataFromDB = await resGuest.json();
+        
+        appState.context = { nombre: guestDataFromDB.name, mesa: guestDataFromDB.table, evento: guestDataFromDB.event_type, host_name: guestDataFromDB.event_host };
         updateUI();
 
         // TRIGGER AI
