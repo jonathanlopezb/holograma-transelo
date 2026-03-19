@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proto Hologram Experience 🌟</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="theme-default">
+    <div class="hologram-container" id="capture-zone">
+        <!-- Live Camera Feed for Selfies (Background) -->
+        <video id="webcam-feed" autoplay playsinline class="webcam-overlay"></video>
+        
+        <!-- Main Avatar Video (Should be a video of the person with black/transparent background) -->
+        <video id="avatar-video" autoplay loop muted playsinline>
+            <!-- Source as default silhuette if none provided -->
+            <source src="" type="video/mp4">
+        </video>
+        
+        <div id="avatar-placeholder" class="silhouette-glow"></div>
+
+        <!-- Overlays -->
+        <div class="scanlines"></div>
+        <div class="flicker-overlay"></div>
+        <div class="vignette"></div>
+
+        <!-- Real-time HUD -->
+        <div class="hud container-bounds">
+            <div class="hud-top-left">
+                PROTO_CORE: 2.1.0<br>
+                EVENT: <span id="event-label">SYSTEM_DEFAULT</span><br>
+                GUEST: <span id="user-label" class="status-online">IDENTIFYING...</span>
+            </div>
+            
+            <div class="hud-top-right">
+                STATUS: <span id="rec-status" class="status-idle">VIRTUAL_IDLE</span><br>
+                BAT: 98% | LAT: 12ms
+            </div>
+            
+            <div id="transcript-container" class="hud-bottom-left">
+                <div class="audio-wave">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+                <div id="transcript-box">BIENVENIDO AL PROTO HOLOGRAPHIC MATRIX</div>
+            </div>
+            
+            <div class="hud-bottom-right">
+                <button id="mic-btn" class="hud-btn glow-btn">🎙️ SOSTÉN PARA HABLAR</button>
+                <button id="selfie-btn" class="hud-btn selfie-btn">📸 SELFIE</button>
+            </div>
+        </div>
+        
+        <!-- Canvas Hidden for composing the selfie -->
+        <canvas id="screenshot-canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- Flash effect for selfies -->
+    <div id="flash-overlay"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
