@@ -3,14 +3,15 @@
     "builds": [
         { "src": "backend/main.py", "use": "@vercel/python" },
         { "src": "frontend/**", "use": "@vercel/static" },
-        { "src": "admin/**", "use": "@vercel/static" }
+        { "src": "admin/**", "use": "@vercel/static" },
+        { "src": "social_wall.html", "use": "@vercel/static" }
     ],
     "rewrites": [
         { "source": "/api/(.*)", "destination": "backend/main.py" },
         { "source": "/admin", "destination": "admin/index.html" },
         { "source": "/admin/(.*)", "destination": "admin/$1" },
-        { "source": "/social", "destination": "frontend/social_wall.html" },
-        { "source": "/(.*)", "destination": "frontend/$1" }
+        { "source": "/social", "destination": "/social_wall.html" },
+        { "source": "/(.*)", "destination": "/frontend/$1" }
     ],
     "cleanUrls": true
 }
